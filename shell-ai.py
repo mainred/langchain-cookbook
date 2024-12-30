@@ -3,18 +3,25 @@
 # - train a fine-tuned model from `shell-ai-traning-data.jsonl` on Azure OpenAI Service and create a deployment out of it
 # - specify the deployment and auth info in the .env
 # - add command_not_found_handler to capture command not found issue, and execute the ai script to give answers
+'''.zshrc
+disable nomatch
+zsh tries to expand the wildcard for glob, and warns you when no match. This will prevent us from adding a ? at the tail of our questions
+unsetopt nomatch
+command_not_found_handler() {
+    if [ "$DISABLE_SHELL_AI" = "true" ]; then
+        printf "zsh: command not found: %s\n" "$1" >&2
+        return 127
+    fi
 
-# disable nomatch
-# zsh tries to expand the wildcard for glob, and warns you when no match. This will prevent us from adding a ? at the tail of our questions
-# unsetopt nomatch
-# command_not_found_handler() {
-#     python /home/azureuser/llm/langchain/langchain-cookbook/shell-ai.py "$@"
-#     if [ $? = 0 ]; then
-#             return 0
-#     else
-#             return 127
-#     fi
-# }
+    python /home/azureuser/llm/langchain/langchain-cookbook/shell-ai.py "$@"
+    if [ $? = 0 ]; then
+            return 0
+    else
+            return 127
+    fi
+}
+'''
+
 from dotenv import load_dotenv
 env_path = "/home/azureuser/llm/langchain/langchain-cookbook/.env"
 load_dotenv(env_path)

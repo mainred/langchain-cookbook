@@ -22,14 +22,26 @@ command_not_found_handler() {
 }
 '''
 
-from dotenv import load_dotenv
-env_path = "/home/azureuser/llm/langchain/langchain-cookbook/.env"
-load_dotenv(env_path)
-
 import os
 import sys
 
+from langchain_community.tools.bing_search import BingSearchResults
+from langchain_community.utilities import BingSearchAPIWrapper
 from langchain_openai import AzureChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain import hub
+
+from dotenv import load_dotenv
+
+env_path = "/home/azureuser/llm/langchain/langchain-cookbook/.env"
+load_dotenv(env_path)
+
+
+if len(sys.argv) < 2:
+    sys.exit(1)
+
+question = " ".join(sys.argv[1:])
+
 
 model = AzureChatOpenAI(
     openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
@@ -37,8 +49,18 @@ model = AzureChatOpenAI(
     openai_api_type=os.environ["AZURE_OPENAI_API_VERSION"],
 )
 
-if len(sys.argv) < 2:
-    sys.exit(1)
+api_wrapper = BingSearchAPIWrapper()
+tool = BingSearchResults(api_wrapper=api_wrapper)
 
-question = " ".join(sys.argv[1:])
-print(model.invoke(question).content)
+instructions = """You are an assistant."""
+base_prompt = hub.pull("langchain-ai/openai-functions-template")
+prompt = base_prompt.partial(instructions=instructions)
+tools = [tool]
+
+agent = create_tool_calling_agent(model, tools, prompt)
+agent_executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+)
+
+print(agent_executor.invoke({"input": question})['output'])

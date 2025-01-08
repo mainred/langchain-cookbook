@@ -22,8 +22,11 @@ command_not_found_handler() {
 }
 '''
 
+from colorama import Fore, Style
+import threading
 import os
 import sys
+import time
 
 from langchain_community.tools.bing_search import BingSearchResults
 from langchain_community.utilities import BingSearchAPIWrapper
@@ -63,4 +66,31 @@ agent_executor = AgentExecutor(
     tools=tools,
 )
 
-print(agent_executor.invoke({"input": question})['output'])
+event = threading.Event()
+
+
+def print_ai_result():
+    print(Style.RESET_ALL+agent_executor.invoke({"input": question})['output'])
+
+
+def print_timing():
+    wait_sec = 1
+    while True:
+        if event.is_set():
+            break
+        print(
+            Fore.YELLOW+f"Calculating through Azure OpenAI, waiting for {wait_sec}s", end="\r")
+        wait_sec += 1
+        time.sleep(1)
+
+
+time_thread = threading.Thread(target=print_timing)
+time_thread.start()
+
+ai_thread = threading.Thread(target=print_ai_result)
+ai_thread.start()
+
+ai_thread.join()
+event.set()
+
+time_thread.join()
